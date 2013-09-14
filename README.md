@@ -1,7 +1,9 @@
 jefit
 =====
 
-Data analysis stuff for the Jefit Android App backup database. See the <i>Jefit Data Munging</i> serie of posts for more information.
+Data analysis stuff for the Jefit Android App backup database. See the 
+<i>Jefit Data Munging</i> serie of posts at [OpenSysBlog](http://opensysblog.directorioc.net)
+ for more information.
 
 Tools available
 -------------------------
@@ -9,6 +11,7 @@ Tools available
   <dt>jefit-data-analysis.R</dt>
   <dd>R script for reading the Jefit backup database and create a PDF file with some training statistics graphs.
     It has the following dependencies:
+
     * DBI
     * RSQLite
     * ggplot2
