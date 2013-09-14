@@ -1,13 +1,20 @@
 jefit
 =====
 
-Data analysis stuff for the Jefit Android App backup database
+Data analysis stuff for the Jefit Android App backup database. See the <i>Jefit Data Munging</i> serie of posts for more information.
 
 Tools available
 -------------------------
 <dl>
   <dt>jefit-data-analysis.R</dt>
-  <dd>R script for reading the Jefit backup database and create a PDF with training statistics</dd>
+  <dd>R script for reading the Jefit backup database and create a PDF file with some training statistics graphs.
+    It has the following dependencies:
+    * DBI
+    * RSQLite
+    * ggplot2
+    * scales
+    * grid
+  </dd>
   <dt>jefit-data-munging.pl</dt>
   <dd>Perl script for migrating the Jefit backup database to a custom database.
   This script uses the DBIx::Class model libraries under lib/.</dd>
@@ -30,4 +37,5 @@ References
   Part [IX](http://opensysblog.directorioc.net/2013/09/jefit-data-munging-vii-what-now.html)
   Part [X](http://opensysblog.directorioc.net/2013/09/jefit-data-munging-x-even-more-graphs.html)
   Part [XI](http://opensysblog.directorioc.net/2013/09/jefit-data-munging-xi-pure-r.html)
+  Part [X](http://opensysblog.directorioc.net/2013/09/jefit-data-munging-xii-final-notes-and.html)
 * JEFIT Android Workout Tracker http://www.jefit.com/
