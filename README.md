@@ -7,7 +7,7 @@ Tools available
 -------------------------
 <dl>
   <dt>jefit-data-analysis.R</dt>
-  <dd>R script for reading the Jefit backup database into a data frame</dd>
+  <dd>R script for reading the Jefit backup database and create a PDF with training statistics</dd>
   <dt>jefit-data-munging.pl</dt>
   <dd>Perl script for migrating the Jefit backup database to a custom database.
   This script uses the DBIx::Class model libraries under lib/.</dd>
