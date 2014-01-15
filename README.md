@@ -5,6 +5,8 @@ Data analysis stuff for the Jefit Android App backup database. See the
 <i>Jefit Data Munging</i> serie of posts at [OpenSysBlog](http://opensysblog.directorioc.net)
  for more information.
 
+##### Starting from version 5.0910 the database is encrypted (see [this post](see http://www.jefit.com/forum/showthread.php?35904-Accesing-backup-file-)) so this code works only with versions older than 5.0910
+
 Tools available
 -------------------------
 <dl>
