@@ -4,6 +4,12 @@ library(ggplot2)
 library(scales) # for alpha colors
 library(grid) # for viewports
 
+
+#Edit these for the workouts you wish to display
+exercise1 <- 'Barbell Deadlift'
+exercise2 <- 'Smith Machine Squat'
+exercise3 <- 'Smith Machine Bench Press'
+
 pdf("jefit-data-analysis.pdf")
 
 #-----------------------------------------------------------------------------
@@ -21,7 +27,8 @@ pdf("jefit-data-analysis.pdf")
 
 trainingData <- data.frame(date=NA, exercise=NA, weight=NA, reps=NA )
 
-con <- dbConnect("SQLite", "jefit.sqlite")
+
+con <- dbConnect(RSQLite::SQLite(), dbname = "jefit.bak.dec")
 
 df <- dbReadTable(con, "exerciseLogs")
 
@@ -30,10 +37,11 @@ row <- 1
 
 for (i in 1:nrow(df)) {
     log <- df[i,]
-    for (sets in strsplit(log[6]$logs, ",")) {
+    #print(log[7])
+    for (sets in strsplit(as.character(log[7]), ",")) {
         for (set in sets) {
             weight_reps <- unlist(strsplit(set,"x"))
-            trainingData[row,] <- c(log[3]$mydate, log[5]$ename, c(weight_reps))
+            trainingData[row,] <- c(log[4], log[6], c(weight_reps))
             row <- row + 1
         }
     }
@@ -60,8 +68,9 @@ df <- aggregate(trainingData$volume, FUN=sum, by=list(trainingData$year, trainin
 colnames(df) <- c("year", "month", "volume")
 volumePerMonth <- ggplot(df, aes(x=month, y=volume, group=year, color=year))+
     geom_line()+
-    opts(title="Training Volume Per Month")
-
+    labs(title = "Training Volume Per Month")+ 
+    scale_y_continuous(labels = comma) +
+theme(legend.position="bottom", legend.direction="horizontal")
 
 #-----------------------------------------------------------------------------
 # .: Training volume per session :.
@@ -70,9 +79,9 @@ volumePerMonth <- ggplot(df, aes(x=month, y=volume, group=year, color=year))+
 df <-aggregate(trainingData$volume, FUN=sum, by=list(trainingData$date))
 colnames(df) <- c("month", "volume")
 
-names <- c("2011", "2012","2013")
-starts <- c("2011-01-01", "2012-01-01", "2013-01-01")
-ends <- c("2011-12-31", "2012-12-31", "2013-12-31")
+names <- c("2014", "2015")
+starts <- c("2014-01-01", "2015-01-01")
+ends <- c("2014-12-31", "2015-12-31")
 years <- data.frame(names, as.Date(starts,"%Y-%m-%d"), as.Date(ends, "%Y-%m-%d"))
 colnames(years) <- c("name", "start", "end")
 
@@ -83,7 +92,7 @@ volumePerSession <- ggplot(df,aes(x=month,y=volume))+
     geom_line()+
     geom_rect(aes(NULL,NULL, xmin=start, xmax=end, fill=name), ymin=yrng[1], ymax=yrng[2],data=years)+
     scale_fill_manual(values=alpha(c("blue","red","green"),0.2))+
-    opts(title="Training Volume Per Session")
+    labs(title = "Training Volume Per Session")
 
 
 #-----------------------------------------------------------------------------
@@ -93,9 +102,10 @@ volumePerSession <- ggplot(df,aes(x=month,y=volume))+
 df <- aggregate(trainingData$volume, FUN=sum, by=list(trainingData$year))
 colnames(df) <- c("year", "volume")
 volumePerYear <- ggplot(df, aes(x=year, y=volume))+
-    geom_bar(fill="#0086C9")+
+    geom_bar(fill="#0086C9",stat="identity")+
     scale_x_discrete("Year")+
-    opts(title="Training Volume Per Year")
+    labs(title = "Training Volume Per Year")+ 
+    scale_y_continuous(labels = comma)
 
 
 #-----------------------------------------------------------------------------
@@ -122,9 +132,9 @@ df <- aggregate(trainingData$volume, list(Date = fmt(trainingData$date)), sum)
 colnames(df) <- c("week", "volume")
 volumePerWeek <- ggplot(df, aes(x=week,y=volume,group=1))+
     geom_point()+
-    opts(title="Training Volume Per Week")+
+    labs(title="Training Volume Per Week")+
     geom_smooth(method=lm)+
-    opts(axis.text.x=theme_blank())
+    theme(axis.text.x=element_blank())
 
 
 #-----------------------------------------------------------------------------
@@ -136,10 +146,11 @@ df <- aggregate(trainingData$volume, list(fmt(trainingData$date)), sum)
 df <- df[(nrow(df)-N):nrow(df),]
 colnames(df) <- c("week", "volume")
 volumeLastWeeks <- ggplot(df, aes(x=week,y=volume))+
-    geom_bar(fill="#0086C9")+
+    geom_bar(fill="#0086C9",stat="identity")+
     geom_hline(aes(yintercept=mean(volume),color="mean"),show_guide=TRUE)+
     scale_colour_hue("")+
-    opts(title=paste("Training Volume Per Week (last", N, "weeks)",sep=" "), axis.text.x=theme_blank())
+    labs(title=paste("Training Volume Per Week (last", N, "weeks)",sep=" "))+
+    theme(axis.text.x=element_blank(), legend.position="bottom", legend.direction="horizontal")
 
 
 #-----------------------------------------------------------------------------
@@ -155,7 +166,7 @@ print(volumeLastWeeks, vp = vplayout(2, 1))
 #-----------------------------------------------------------------------------
 # .: Training volume per session, last N sessions :.
 #-----------------------------------------------------------------------------
-N <- 16
+N <- 32
 df <- aggregate(trainingData$volume, list(trainingData$date), sum)
 df <- df[(nrow(df)-N):nrow(df),]
 colnames(df) <- c("date", "volume")
@@ -163,24 +174,23 @@ ggplot(df, aes(x=date,y=volume))+
     geom_line(fill="#0086C9")+
     geom_hline(aes(yintercept=mean(volume),color="mean"),show_guide=TRUE)+
     scale_colour_hue("")+
-    opts(title=paste("Training Volume Per Session (last", N, "sessions)",sep=" "), axis.text.x=theme_blank())
+    labs(title=paste("Training Volume Per Session (last", N, "sessions)",sep=" "))+
+    theme(axis.text.x=element_blank() ,legend.position="bottom", legend.direction="horizontal")
 
 
 #-----------------------------------------------------------------------------
 # .: Monthly Volume for Benchmark Exercises :.
 #-----------------------------------------------------------------------------
-
-df <- subset(trainingData, subset = exercise == 'Barbell Deadlift' |
-              exercise == 'Power Clean' | exercise == 'Standing Military Press' |
-              exercise == 'Barbell Squat' | exercise == 'Barbell Bench Press',
-          select = c("year", "month", "exercise", "volume"))
+df <- subset(trainingData, subset = exercise == exercise1 |exercise ==
+            exercise2 | exercise == exercise3,
+            select = c("year", "month", "exercise", "volume"))
 dfVolumePerExercise <- aggregate(df$volume, by=list(df$year,df$month,df$exercise), FUN=sum)
 colnames(dfVolumePerExercise) <- c("year", "month", "exercise", "volume")
 ggplot(dfVolumePerExercise, aes(x=month, y=volume, group=exercise, color=exercise))+
     geom_line()+
     facet_grid(exercise ~ year)+
     guides(colour=FALSE)+
-    opts(title="Monthly Training Volume Per Exercise")
+    labs(title="Monthly Training Volume Per Exercise")
 
 
 #-----------------------------------------------------------------------------
@@ -188,13 +198,11 @@ ggplot(dfVolumePerExercise, aes(x=month, y=volume, group=exercise, color=exercis
 #-----------------------------------------------------------------------------
 
 personalRecords <- subset(trainingData, subset =
-    ( exercise == "Barbell Squat" |
-        exercise == "Barbell Bench Press" |
-        exercise == "Barbell Shoulder Press" |
-        exercise == "Barbell Deadlift" |
-        exercise == "Power Clean" )
+            (exercise == exercise1 |
+            exercise == exercise2 |
+            exercise == exercise3)
     &
-    ( reps >= 1 & reps <= 5 )
+    ( reps >= 1 & reps <= 8 )
 )
 
 df <- aggregate(personalRecords$weight, FUN=max, by=list(personalRecords$exercise, personalRecords$reps))
@@ -205,7 +213,7 @@ ggplot(df, aes(x=df$exercise, y=df$weight, fill=factor(reps)))+
     scale_x_discrete("Exercise")+
     scale_y_continuous("Kilograms")+
     scale_fill_hue(name="RM")+
-    opts(title="Personal Records")+
+    labs(title="Personal Records")+
     geom_text(aes(label=df$weight), position=position_dodge(width=1),vjust=-1)
 
 
@@ -214,11 +222,9 @@ ggplot(df, aes(x=df$exercise, y=df$weight, fill=factor(reps)))+
 #-----------------------------------------------------------------------------
 
 personalRecords <- subset(trainingData, subset =
-    ( exercise == "Barbell Squat" |
-        exercise == "Barbell Bench Press" |
-        exercise == "Barbell Shoulder Press" |
-        exercise == "Barbell Deadlift" |
-        exercise == "Power Clean" )
+   (exercise == exercise1 |
+            exercise == exercise2 |
+            exercise == exercise3)
 )
 
 df <- aggregate(personalRecords$reps, FUN=max, by=list(personalRecords$exercise, personalRecords$weight))
@@ -226,10 +232,11 @@ colnames(df) <- c("exercise", "weight", "reps")
 
 ggplot(df, aes(x=weight, y=reps, shape=exercise, color=exercise))+
     geom_point()+
-    scale_x_continuous(breaks=seq(1,120,by=4))+
+    scale_x_continuous(breaks=seq(20,180,by=5))+
     scale_y_continuous(breaks=seq(1,20,by=1))+
     geom_smooth(method=lm, se=FALSE)+
-    opts(title="Max reps per weight", legend.position="bottom", legend.direction="vertical")
+    labs(title="Max reps per weight")+
+    theme(legend.position="bottom", legend.direction="vertical")
 
 #-----------------------------------------------------------------------------
 # .: Exercise Histogram :.
@@ -241,21 +248,22 @@ dfOrdered <- dfCount[order(-dfCount$count),]
 dfTop20 <- dfOrdered[1:20,]
 dfTop20$order <- factor(dfTop20$exercise, as.character(dfTop20$exercise))
 ggplot(dfTop20,aes(x=order, y=count))+
-    geom_bar(fill="#0086C9")+
+    geom_bar(fill="#0086C9", stat="identity")+
     scale_x_discrete("Exercise")+
     scale_y_continuous("Count")+
-    opts(axis.text.x=theme_text(angle=67))+
-    opts(title="Top 20 Most Frequent Exercises")
+    theme(axis.text.x=element_text(angle=67))+
+    labs(title="Top 20 Most Frequent Exercises")
 
 
 #-----------------------------------------------------------------------------
 # .: Intensity histogram :.
 #-----------------------------------------------------------------------------
 
-ggplot(trainingData, aes(x=reps,y=..count..))+
-    geom_histogram(binwidth=2, fill="#0086C9")+
-    geom_density()+
-    scale_x_continuous("Nº of reps per set")+
-    opts(title="Training Intensity Distribution")
+#I dont have any experiece with ggplot so couldn't get this to work
+#ggplot(trainingData, aes(x=reps))+
+#    geom_histogram(aes(y=..count..),binwidth=2, fill="#0086C9")+
+#    geom_density()+
+#    scale_x_continuous("Nº of reps per set")+
+#    labs(title="Training Intensity Distribution")
 
 dev.off()
