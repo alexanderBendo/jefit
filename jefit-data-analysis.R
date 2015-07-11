@@ -4,13 +4,21 @@ library(ggplot2)
 library(scales) # for alpha colors
 library(grid) # for viewports
 
+#-----------------------------------------------------------------------------
+# .: Customization :.
+#-----------------------------------------------------------------------------
 
-#Edit these for the workouts you wish to display
-exercise1 <- 'Barbell Deadlift'
-exercise2 <- 'Smith Machine Squat'
-exercise3 <- 'Smith Machine Bench Press'
+# Path to the decrypted jefit backup
+dbfile <- "jefit-decrypted.sqlite"
 
+# Edit these for the workouts you wish to display
+exercises <- c('Barbell Deadlift','Barbell Bench Press', 'Barbell Squat')
+
+# The output file
 pdf("jefit-data-analysis.pdf")
+
+# You need to adjust this for your own log time span
+year_names <- c("2011", "2012", "2013", "2014", "2015")
 
 #-----------------------------------------------------------------------------
 # .: Load data :.
@@ -27,8 +35,7 @@ pdf("jefit-data-analysis.pdf")
 
 trainingData <- data.frame(date=NA, exercise=NA, weight=NA, reps=NA )
 
-
-con <- dbConnect(RSQLite::SQLite(), dbname = "jefit.bak.dec")
+con <- dbConnect(RSQLite::SQLite(), dbname = dbfile)
 
 df <- dbReadTable(con, "exerciseLogs")
 
@@ -37,7 +44,6 @@ row <- 1
 
 for (i in 1:nrow(df)) {
     log <- df[i,]
-    #print(log[7])
     for (sets in strsplit(as.character(log[7]), ",")) {
         for (set in sets) {
             weight_reps <- unlist(strsplit(set,"x"))
@@ -79,10 +85,11 @@ theme(legend.position="bottom", legend.direction="horizontal")
 df <-aggregate(trainingData$volume, FUN=sum, by=list(trainingData$date))
 colnames(df) <- c("month", "volume")
 
-names <- c("2014", "2015")
-starts <- c("2014-01-01", "2015-01-01")
-ends <- c("2014-12-31", "2015-12-31")
-years <- data.frame(names, as.Date(starts,"%Y-%m-%d"), as.Date(ends, "%Y-%m-%d"))
+starts <- character()
+ends <- character()
+for (n in year_names) { starts <- c(starts, paste(n, "01","01", sep="-"))}
+for (n in year_names) { ends <- c(ends, paste(n, "12","31", sep="-"))}
+years <- data.frame(year_names, as.Date(starts,"%Y-%m-%d"), as.Date(ends, "%Y-%m-%d"))
 colnames(years) <- c("name", "start", "end")
 
 xrng <- range(df$month)
@@ -91,7 +98,7 @@ yrng <- range(df$volume)
 volumePerSession <- ggplot(df,aes(x=month,y=volume))+
     geom_line()+
     geom_rect(aes(NULL,NULL, xmin=start, xmax=end, fill=name), ymin=yrng[1], ymax=yrng[2],data=years)+
-    scale_fill_manual(values=alpha(c("blue","red","green"),0.2))+
+    scale_fill_manual(values=alpha(c("blue","red","green","yellow", "purple"),0.2))+
     labs(title = "Training Volume Per Session")
 
 
@@ -181,8 +188,7 @@ ggplot(df, aes(x=date,y=volume))+
 #-----------------------------------------------------------------------------
 # .: Monthly Volume for Benchmark Exercises :.
 #-----------------------------------------------------------------------------
-df <- subset(trainingData, subset = exercise == exercise1 |exercise ==
-            exercise2 | exercise == exercise3,
+df <- subset(trainingData, subset = exercise %in% exercises,
             select = c("year", "month", "exercise", "volume"))
 dfVolumePerExercise <- aggregate(df$volume, by=list(df$year,df$month,df$exercise), FUN=sum)
 colnames(dfVolumePerExercise) <- c("year", "month", "exercise", "volume")
@@ -197,10 +203,7 @@ ggplot(dfVolumePerExercise, aes(x=month, y=volume, group=exercise, color=exercis
 # .: Personal Rercords 1RM - 5RM :.
 #-----------------------------------------------------------------------------
 
-personalRecords <- subset(trainingData, subset =
-            (exercise == exercise1 |
-            exercise == exercise2 |
-            exercise == exercise3)
+personalRecords <- subset(trainingData, subset = exercise %in% exercises
     &
     ( reps >= 1 & reps <= 8 )
 )
@@ -221,11 +224,7 @@ ggplot(df, aes(x=df$exercise, y=df$weight, fill=factor(reps)))+
 # .: Personal Rercords Max reps per weight :.
 #-----------------------------------------------------------------------------
 
-personalRecords <- subset(trainingData, subset =
-   (exercise == exercise1 |
-            exercise == exercise2 |
-            exercise == exercise3)
-)
+personalRecords <- subset(trainingData, subset = exercise %in% exercises)
 
 df <- aggregate(personalRecords$reps, FUN=max, by=list(personalRecords$exercise, personalRecords$weight))
 colnames(df) <- c("exercise", "weight", "reps")
@@ -259,11 +258,10 @@ ggplot(dfTop20,aes(x=order, y=count))+
 # .: Intensity histogram :.
 #-----------------------------------------------------------------------------
 
-#I dont have any experiece with ggplot so couldn't get this to work
-#ggplot(trainingData, aes(x=reps))+
-#    geom_histogram(aes(y=..count..),binwidth=2, fill="#0086C9")+
-#    geom_density()+
-#    scale_x_continuous("Nº of reps per set")+
-#    labs(title="Training Intensity Distribution")
+ggplot(trainingData, aes(x=reps))+
+    geom_histogram(aes(y=..count..),binwidth=2, fill="#0086C9")+
+    geom_density()+
+    scale_x_continuous("Nº of reps per set")+
+    labs(title="Training Intensity Distribution")
 
 dev.off()
